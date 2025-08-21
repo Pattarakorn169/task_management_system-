@@ -105,4 +105,4 @@ if __name__ == "__main__":
     manager.list_tasks()
     manager.add_task("Review SOLID Principles", "2024-08-10", priority="high")
     manager.add_task("Prepare for Final Exam", "2024-08-15", priority="low")
-    print(“Finished”) 
+    print(“Finished”)
