@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
 
+# 2.1 + 2.2) ปรับปรุง Class Task
 class Task:
-    def __init__(self, id, description, due_date=None, completed=False):
+    def __init__(self, id, description, due_date=None, completed=False, priority="medium"):
         self.id = id
         self.description = description
         self.due_date = due_date
         self.completed = completed
+        self.priority = priority  # ✅ เพิ่ม priority
 
     def mark_completed(self):
         self.completed = True
@@ -13,9 +15,10 @@ class Task:
     def __str__(self):
         status = "✓" if self.completed else " "
         due = f"(Due: {self.due_date})" if self.due_date else ""
-        return f"[{status}] {self.id}. {self.description} {due}".strip()
+        return f"[{status}] {self.id}. {self.description} {due} [Priority: {self.priority}]".strip()
 
-# 3) สร้าง Abstract Class TaskStorage (OCP)
+
+# 3) Abstract Class TaskStorage (OCP)
 class TaskStorage(ABC):
     @abstractmethod
     def load_tasks(self):
@@ -25,7 +28,8 @@ class TaskStorage(ABC):
     def save_tasks(self, tasks):
         pass
 
-# 4) สร้าง Concrete Class FileTaskStorage
+
+# 4) Concrete Class FileTaskStorage (แก้ให้รองรับ priority)
 class FileTaskStorage(TaskStorage):
     def __init__(self, filename="tasks.txt"):
         self.filename = filename
@@ -36,12 +40,13 @@ class FileTaskStorage(TaskStorage):
             with open(self.filename, "r") as f:
                 for line in f:
                     parts = line.strip().split(',')
-                    if len(parts) == 4:
+                    if len(parts) == 5:  # ✅ รองรับ priority
                         task_id = int(parts[0])
                         description = parts[1]
                         due_date = parts[2] if parts[2] != 'None' else None
                         completed = parts[3] == 'True'
-                        loaded_tasks.append(Task(task_id, description, due_date, completed))
+                        priority = parts[4]
+                        loaded_tasks.append(Task(task_id, description, due_date, completed, priority))
         except FileNotFoundError:
             print(f"No existing task file '{self.filename}' found. Starting fresh.")
         return loaded_tasks
@@ -49,23 +54,24 @@ class FileTaskStorage(TaskStorage):
     def save_tasks(self, tasks):
         with open(self.filename, "w") as f:
             for task in tasks:
-                f.write(f"{task.id},{task.description},{task.due_date},{task.completed}\n")
+                f.write(f"{task.id},{task.description},{task.due_date},{task.completed},{task.priority}\n")
         print(f"Tasks saved to {self.filename}")
 
-# 5) ปรับปรุง TaskManager ให้รับ TaskStorage (Dependency Injection)
+
+# 5) TaskManager (แก้ add_task ให้รองรับ priority)
 class TaskManager:
     def __init__(self, storage: TaskStorage):
         self.storage = storage
         self.tasks = self.storage.load_tasks()
-        self.next_id = max([t.id for t in self.tasks] + [0]) + 1 if self.tasks else 1
+        self.next_id = max([t.id for t in self.tasks], default=0) + 1
         print(f"Loaded {len(self.tasks)} tasks. Next ID: {self.next_id}")
 
-    def add_task(self, description, due_date=None):
-        task = Task(self.next_id, description, due_date)
+    def add_task(self, description, due_date=None, priority="medium"):
+        task = Task(self.next_id, description, due_date, priority=priority)
         self.tasks.append(task)
         self.next_id += 1
         self.storage.save_tasks(self.tasks)
-        print(f"Task '{description}' added.")
+        print(f"Task '{description}' added with priority '{priority}'.")
         return task
 
     def list_tasks(self):
@@ -90,11 +96,12 @@ class TaskManager:
         print(f"Task {task_id} not found.")
         return False
 
-# 6) ปรับปรุง Logic หลัก
+
+# 6) Logic หลัก
 if __name__ == "__main__":
     file_storage = FileTaskStorage("my_tasks.txt")
     manager = TaskManager(file_storage)
 
     manager.list_tasks()
-    manager.add_task("Review SOLID Principles", "2024-08-10")
-    manager.add_task("Prepare for Final Exam", "2024-08-15")
+    manager.add_task("Review SOLID Principles", "2024-08-10", priority="high")
+    manager.add_task("Prepare for Final Exam", "2024-08-15", priority="low")
